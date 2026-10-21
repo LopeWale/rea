@@ -60,6 +60,20 @@ export const WEB_SCRIPT_EXPORT_PROVIDER = {
   version: "1",
 } as const;
 
+/** Provider identity for browserless HTTP fetches of a page's script graph. */
+export const WEB_SCRIPT_FETCH_PROVIDER = {
+  id: "rea-web-script-fetch",
+  name: "REA website script fetch",
+  version: "1",
+} as const;
+
+/** Provider identity for local OpenAPI document inspection. */
+export const API_CONTRACT_PROVIDER = {
+  id: "rea-api-contract",
+  name: "REA API contract inspection",
+  version: "1",
+} as const;
+
 /** Provider identity for deterministic static JavaScript application analysis. */
 export const JAVASCRIPT_APPLICATION_PROVIDER = {
   id: "rea-javascript-application",

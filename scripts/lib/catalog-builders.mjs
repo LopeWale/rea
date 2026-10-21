@@ -67,6 +67,7 @@ export const toolFamilyCatalog = (sources) => {
       contracts: [
         ...sources.applicationContracts.APPLICATION_TOOL_CONTRACTS,
         ...sources.webScriptContracts.WEB_SCRIPT_TOOL_CONTRACTS,
+        ...sources.apiContractContracts.API_CONTRACT_TOOL_CONTRACTS,
       ],
     },
     {
@@ -189,7 +190,19 @@ export const providerCatalog = (sources) => {
     },
     {
       identity: sources.artifactProviders.WEB_SCRIPT_EXPORT_PROVIDER,
-      contracts: sources.webScriptContracts.WEB_SCRIPT_TOOL_CONTRACTS,
+      contracts: sources.webScriptContracts.WEB_SCRIPT_TOOL_CONTRACTS.filter(
+        ({ name }) => name === "export_web_scripts",
+      ),
+    },
+    {
+      identity: sources.artifactProviders.WEB_SCRIPT_FETCH_PROVIDER,
+      contracts: sources.webScriptContracts.WEB_SCRIPT_TOOL_CONTRACTS.filter(
+        ({ name }) => name === "fetch_web_scripts",
+      ),
+    },
+    {
+      identity: sources.artifactProviders.API_CONTRACT_PROVIDER,
+      contracts: sources.apiContractContracts.API_CONTRACT_TOOL_CONTRACTS,
     },
   ]
     .map(({ identity, contracts }) => ({

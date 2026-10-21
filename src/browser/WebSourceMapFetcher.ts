@@ -1,11 +1,15 @@
-import * as t from "@babel/types";
 import { AnyMap, eachMapping } from "@jridgewell/trace-mapping";
 
 import { sanitizeBrowserUrl } from "../domain/browserObservation.js";
 import { isUrlLikeModuleSpecifier } from "../domain/webBundleAnalyzerAst.js";
-import { analyzeParsedJavaScriptSemantics } from "../domain/javascriptSemanticAnalysis.js";
+import { scanModuleDependencies } from "../domain/javascriptModuleDependencies.js";
 import { parseJavaScriptSource } from "../domain/javascriptSourceParser.js";
 import { hasValidSourceMapContents } from "../domain/sourceMapContents.js";
+import {
+  approvedOriginUrl,
+  fetchFollowingApprovedRedirects,
+  type ApprovedFetchHost,
+} from "./ApprovedOriginFetch.js";
 import type {
   AnalyzeWebBundleInput,
   WebSourceMapItem,
@@ -21,9 +25,7 @@ export interface WebSourceMapRequest {
   readonly fetchUrl: string;
 }
 
-interface SourceMapFetchHost {
-  readonly fetch: typeof fetch;
-}
+type SourceMapFetchHost = ApprovedFetchHost;
 
 type SourceMaps = WebSourceMaps;
 type SourceMapItem = WebSourceMapItem;
@@ -69,20 +71,20 @@ const fetchOne = async (
   signal: AbortSignal | undefined,
   host: SourceMapFetchHost,
 ): Promise<SourceMapItem> => {
-  if (!approvedUrl(request.fetchUrl, input.allowed_origins))
+  if (!approvedOriginUrl(request.fetchUrl, input.allowed_origins))
     return emptySourceMapItem(
       request,
       "policy_filtered",
       "Declared source-map URL is outside the approved exact origins.",
     );
   try {
-    const fetched = await fetchFollowingApprovedRedirects(
-      request.fetchUrl,
-      input.allowed_origins,
-      signal,
+    const fetched = await fetchFollowingApprovedRedirects(request.fetchUrl, {
+      approve: (url) => approvedOriginUrl(url, input.allowed_origins),
+      accept: "application/json, application/source-map+json;q=0.9",
       host,
-    );
-    if (fetched === undefined)
+      signal,
+    });
+    if (fetched.kind === "refused")
       return emptySourceMapItem(
         request,
         "policy_filtered",
@@ -105,37 +107,6 @@ const fetchOne = async (
       "fetch_failed",
       "Source-map fetch or validation failed.",
     );
-  }
-};
-
-const fetchFollowingApprovedRedirects = async (
-  initialUrl: string,
-  allowedOrigins: readonly string[],
-  signal: AbortSignal | undefined,
-  host: SourceMapFetchHost,
-): Promise<{ response: Response; fetchedUrl: string } | undefined> => {
-  let current = initialUrl;
-  const visited = new Set<string>();
-  for (;;) {
-    if (!approvedUrl(current, allowedOrigins)) return undefined;
-    if (visited.has(current)) throw new Error("source_map_redirect_loop");
-    visited.add(current);
-    const response = await host.fetch(current, {
-      method: "GET",
-      headers: {
-        Accept: "application/json, application/source-map+json;q=0.9",
-      },
-      redirect: "manual",
-      credentials: "omit",
-      referrerPolicy: "no-referrer",
-      ...(signal === undefined ? {} : { signal }),
-    });
-    if (response.status < 300 || response.status >= 400)
-      return { response, fetchedUrl: current };
-    const location = response.headers.get("location");
-    if (location === null) return { response, fetchedUrl: current };
-    await response.body?.cancel();
-    current = new URL(location, current).href;
   }
 };
 
@@ -229,39 +200,13 @@ const originalModuleEdges = (
       incomplete.push(source.source);
       continue;
     }
+    const scan = scanModuleDependencies(parsed);
     // A recovered program still yields the imports it did parse, but nodes
     // after an unrecoverable point are missing, so the edges are a subset.
-    if (parsed.errors.length > 0) incomplete.push(source.source);
-    let unboundRequires: ReadonlySet<string> | undefined;
-    t.traverseFast(parsed, (node) => {
-      const dependency = originalDependency(node);
-      if (dependency === null) return;
-      const { kind, specifier } = dependency;
-      if (kind === "require" && t.isCallExpression(node)) {
-        unboundRequires ??= new Set(
-          analyzeParsedJavaScriptSemantics(parsed)
-            .references.filter(
-              ({ name, role, resolution }) =>
-                name === "require" &&
-                role === "read" &&
-                resolution === "unbound",
-            )
-            .map(
-              ({ location }) =>
-                `${String(location.start.line)}:${String(location.start.column)}`,
-            ),
-        );
-        const location = node.callee.loc?.start;
-        if (
-          location === undefined ||
-          !unboundRequires.has(
-            `${String(location.line)}:${String(location.column)}`,
-          )
-        )
-          return;
-      }
+    if (!scan.complete) incomplete.push(source.source);
+    for (const { kind, specifier } of scan.dependencies) {
       const key = `${source.source}\0${kind}\0${specifier}`;
-      if (seen.has(key)) return;
+      if (seen.has(key)) continue;
       seen.add(key);
       edges.push({
         from_source: source.source,
@@ -269,7 +214,7 @@ const originalModuleEdges = (
         specifier,
         resolved_source: resolveOriginalSource(specifier, source.source),
       });
-    });
+    }
   }
   return { edges, incomplete };
 };
@@ -309,25 +254,6 @@ const validSourceMapLeaf = (map: Readonly<Record<string, unknown>>): boolean =>
   Array.isArray(map.sources) &&
   Array.isArray(map.names) &&
   hasValidSourceMapContents(map.sources.length, map.sourcesContent);
-
-const approvedUrl = (
-  value: string,
-  allowedOrigins: readonly string[],
-): boolean => {
-  try {
-    const parsed = new URL(value);
-    return (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      parsed.username === "" &&
-      parsed.password === "" &&
-      allowedOrigins.includes(parsed.origin)
-    );
-  } catch (cause: unknown) {
-    // Non-URL input is not an approved source-map URL.
-    void cause;
-    return false;
-  }
-};
 
 const sourceMapContext = (request: WebSourceMapRequest) => ({
   script_key: request.scriptKey,
@@ -379,40 +305,3 @@ const sourceMediaType = (source: string | null): string =>
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-
-const originalDependency = (
-  node: t.Node,
-): {
-  readonly kind: ParsedSourceMapItem["original_module_edges"][number]["kind"];
-  readonly specifier: string;
-} | null => {
-  if (
-    t.isImportDeclaration(node) ||
-    t.isExportAllDeclaration(node) ||
-    t.isExportNamedDeclaration(node)
-  )
-    return node.source === null || node.source === undefined
-      ? null
-      : { kind: "static_import", specifier: node.source.value };
-  if (t.isImportExpression(node) && t.isStringLiteral(node.source))
-    return { kind: "dynamic_import", specifier: node.source.value };
-  if (
-    t.isCallExpression(node) &&
-    t.isIdentifier(node.callee, { name: "require" }) &&
-    t.isStringLiteral(node.arguments[0])
-  )
-    return { kind: "require", specifier: node.arguments[0].value };
-  // `import x = require("m")` is only legal at module top level and always
-  // refers to the host loader, so it needs no unbound-`require` check. The
-  // `moduleReference` is an entity name for a local alias instead, which
-  // declares no dependency.
-  if (
-    t.isTSImportEqualsDeclaration(node) &&
-    t.isTSExternalModuleReference(node.moduleReference)
-  )
-    return {
-      kind: "require",
-      specifier: node.moduleReference.expression.value,
-    };
-  return null;
-};

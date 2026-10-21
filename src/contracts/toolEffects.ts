@@ -220,6 +220,13 @@ export const TOOL_EFFECTS: Readonly<Record<string, ToolEffects>> = {
     writesFilesystem: true,
     idempotent: false,
   }),
+  fetch_web_scripts: effects({
+    mutatesSession: true,
+    writesFilesystem: true,
+    accessesNetwork: true,
+    idempotent: false,
+  }),
+  inspect_api_contract: evidence,
   reconcile_javascript_runtime: evidence,
   trace_application_feature: evidence,
   trace_javascript_semantics: evidence,

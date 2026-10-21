@@ -100,6 +100,18 @@ It uses an installed browser and accepts an optional installed REA entrypoint.
 The complete `verify:browser` lane also exercises passive script export through
 both public adapters. See [website script export](website-script-export.md).
 
+`tests/boundary/filesystem/webScriptFetch.test.ts` covers the browserless
+`fetch_web_scripts` workflow against a loopback fixture site and an injected
+fetch host for archive snapshots. It binds a local port, so run it outside any
+sandbox that forbids loopback listeners. See
+[browserless script fetch](website-script-fetch.md).
+
+`src/domain/openApiContract.test.ts` and
+`tests/boundary/filesystem/apiContractInspection.test.ts` cover
+`inspect_api_contract` normalization and its typed file-boundary rejections
+without any network access. See
+[API contract inspection](api-contract-inspection.md).
+
 The [test suite audit](test-suite-audit.md) records the pruning decisions,
 replacement evidence and remaining priorities.
 

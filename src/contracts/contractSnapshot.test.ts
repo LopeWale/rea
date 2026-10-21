@@ -18,6 +18,7 @@ import { ELECTRON_TOOL_CONTRACTS } from "./electronToolContracts.js";
 import { JAVASCRIPT_RUNTIME_OBSERVATION_TOOL_CONTRACTS } from "./javascriptRuntimeObservationToolContracts.js";
 import { APPLICATION_TOOL_CONTRACTS } from "./applicationToolContracts.js";
 import { WEB_SCRIPT_TOOL_CONTRACTS } from "./webScriptToolContracts.js";
+import { API_CONTRACT_TOOL_CONTRACTS } from "./apiContractToolContracts.js";
 import { TOOL_EFFECTS } from "./toolEffects.js";
 import { TOOL_CONTRACTS, toolContract } from "./toolContracts.js";
 import {
@@ -86,6 +87,7 @@ describe("tool contract surface", () => {
       ...JAVASCRIPT_RUNTIME_OBSERVATION_TOOL_CONTRACTS,
       ...APPLICATION_TOOL_CONTRACTS,
       ...WEB_SCRIPT_TOOL_CONTRACTS,
+      ...API_CONTRACT_TOOL_CONTRACTS,
       ...SESSION_TOOL_CONTRACTS,
     ].map(({ name }) => name);
     expect(Object.keys(TOOL_EFFECTS).sort()).toEqual(names.sort());
@@ -169,5 +171,43 @@ describe("tool contract surface", () => {
         TOOL_CONTRACTS.some((contract) => contract.name === name),
       ),
     ).toBe(true);
+  });
+});
+
+describe("browserless script fetch contract", () => {
+  it("advertises a network-reaching, non-idempotent exclusive publication", () => {
+    const contract = toolContract("fetch_web_scripts");
+    expect(contract.effects).toEqual({
+      mutatesTarget: false,
+      mutatesSession: true,
+      writesFilesystem: true,
+      launchesProcess: false,
+      accessesNetwork: true,
+      changesUiState: false,
+      mayDiscardData: false,
+      idempotent: false,
+    });
+    expect(contract.annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+});
+
+describe("web script publication schema scoping", () => {
+  it("advertises only the source variants each tool can produce", () => {
+    const exported = JSON.stringify(
+      contractJsonSchema(toolContract("export_web_scripts").outputSchema),
+    );
+    const fetched = JSON.stringify(
+      contractJsonSchema(toolContract("fetch_web_scripts").outputSchema),
+    );
+    expect(exported).not.toContain("http-fetch");
+    expect(exported).not.toContain("http-response-bytes");
+    expect(fetched).toContain("http-fetch");
+    expect(fetched).not.toContain("page-script");
+    expect(fetched).not.toContain("scenario-response");
   });
 });

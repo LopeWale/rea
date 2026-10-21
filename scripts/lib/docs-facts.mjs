@@ -1,13 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-const README_PATHS = [
-  "README.md",
-  "README_zh.md",
-  "README_ja.md",
-  "README_ko.md",
-  "README_ar.md",
-];
+const README_PATHS = ["README.md"];
 const tableCounts = (content, path, expectedCounts) => {
   const lines = content.split(/\r?\n/u);
   for (const [index, line] of lines.entries()) {

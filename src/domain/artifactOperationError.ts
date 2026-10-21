@@ -13,6 +13,8 @@ export class ArtifactOperationError extends AnalysisError {
       | "inspect_asset_catalog"
       | "inspect_keyed_archive"
       | "export_web_scripts"
+      | "fetch_web_scripts"
+      | "inspect_api_contract"
       | "analyze_javascript_application",
     readonly reason:
       | "cancelled"

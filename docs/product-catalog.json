@@ -10,7 +10,7 @@
     "skill_version": "26"
   },
   "tools": {
-    "total": 126,
+    "total": 128,
     "families": [
       {
         "id": "direct",
@@ -179,7 +179,7 @@
       {
         "id": "application",
         "surface": "application-workflow",
-        "count": 8,
+        "count": 10,
         "tools": [
           "build_reconstruction_obligation_ledger",
           "compare_application_versions",
@@ -187,6 +187,8 @@
           "compare_source_to_bundle",
           "evaluate_reconstruction_coverage",
           "export_web_scripts",
+          "fetch_web_scripts",
+          "inspect_api_contract",
           "trace_application_feature",
           "trace_javascript_semantics"
         ]
@@ -351,6 +353,12 @@
       ]
     },
     {
+      "id": "rea-api-contract",
+      "name": "REA API contract inspection",
+      "version": "1",
+      "capabilities": ["inspect_api_contract"]
+    },
+    {
       "id": "rea-artifact-graph",
       "name": "REA safe artifact graph provider",
       "version": "1",
@@ -458,6 +466,12 @@
       "capabilities": ["export_web_scripts"]
     },
     {
+      "id": "rea-web-script-fetch",
+      "name": "REA website script fetch",
+      "version": "1",
+      "capabilities": ["fetch_web_scripts"]
+    },
+    {
       "id": "unblob",
       "name": "Unblob",
       "version": "26.6.4",
@@ -539,7 +553,7 @@
     }
   ],
   "cli": {
-    "primary_count": 81,
+    "primary_count": 83,
     "commands": [
       "address-to-file-offset",
       "analyze",
@@ -572,6 +586,7 @@
       "export-web-scripts",
       "extract-artifact",
       "extract-firmware",
+      "fetch-web-scripts",
       "function",
       "import-managed-reconstruction",
       "import-reference-source",
@@ -579,6 +594,7 @@
       "inspect-android-class",
       "inspect-android-method",
       "inspect-android-package",
+      "inspect-api-contract",
       "inspect-artifact",
       "inspect-asset-catalog",
       "inspect-electron-page",
@@ -632,15 +648,15 @@
   },
   "runtime_catalog": {
     "counts": {
-      "cli_commands": 81,
-      "mcp_tools": 126,
+      "cli_commands": 83,
+      "mcp_tools": 128,
       "mcp_prompts": 6
     },
     "digests": {
-      "tools_sha256": "569db1182f19869a3bdb22cf217bc75526f317b59635c8866d0e62741077cd52",
+      "tools_sha256": "da751b10cd309f7e8fc21b5a2915ba3ec0f738c3184e6aaf76d4c03a0c511bdb",
       "prompts_sha256": "ef2de8814390b340623c32001610aa2709d90bed51537b6e562ab3abf144ab4d",
-      "combined_sha256": "e21455dd7d64af94e0b07aff55ab82f03a37e46729ece51be38b50083d2d5b55",
-      "providers_sha256": "7949ddcf2eb5ba41b022bb3dfa1951ab96dbf5640285fa7fd5d35b0e4a5bdab3"
+      "combined_sha256": "3b40350f773ff9fab40a5f23d5c85f4e3f0de943f0c4b19db1d4a6cf1fd8bfd0",
+      "providers_sha256": "505979670400e9a57b524d76f340275d3cb4a415a519a908cfba37e244409a01"
     }
   }
 }

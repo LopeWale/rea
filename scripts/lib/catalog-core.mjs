@@ -55,6 +55,7 @@ const SOURCE_PATHS = {
     "dist/contracts/javascriptRuntimeObservationToolContracts.js",
   applicationContracts: "dist/contracts/applicationToolContracts.js",
   webScriptContracts: "dist/contracts/webScriptToolContracts.js",
+  apiContractContracts: "dist/contracts/apiContractToolContracts.js",
   supportedClients: "dist/application/SupportedClients.js",
   hopperProvider: "dist/hopper/HopperProvider.js",
   ghidraProvider: "dist/ghidra/GhidraProvider.js",

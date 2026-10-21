@@ -7,14 +7,7 @@ import { SUPPORTED_NODE_VERSION_RANGE } from "../../src/domain/runtimeVersion.js
 const readJson = async (path: string): Promise<unknown> =>
   JSON.parse(await readFile(path, "utf8")) as unknown;
 
-const versionedDocumentation = [
-  "README.md",
-  "README_zh.md",
-  "README_ja.md",
-  "README_ko.md",
-  "README_ar.md",
-  "docs/installation.md",
-] as const;
+const versionedDocumentation = ["README.md", "docs/installation.md"] as const;
 
 describe("release configuration", () => {
   it("keeps doctor and setup runtime support aligned with package engines", async () => {

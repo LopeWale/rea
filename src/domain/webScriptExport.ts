@@ -23,51 +23,112 @@ export type ExportWebScriptsInput = z.output<
   typeof exportWebScriptsInputSchema
 >;
 
-const sourceSchema = z.discriminatedUnion("kind", [
-  z.strictObject({
-    kind: z.literal("page-script"),
-    script_key: z.string().min(1),
-    frame_id: z.string().nullable(),
-    is_module: z.boolean(),
-    language: z.string().nullable(),
-    source_map_url: z.string().nullable(),
-  }),
-  z.strictObject({
-    kind: z.literal("scenario-response"),
-    transaction_id: z.string().nullable(),
-    request_sequence: z.number().int().min(1),
-    response_sequence: z.number().int().min(1).nullable(),
-    status: z.number().nullable(),
-  }),
-]);
-
-/** Exact retained-source identity and publication outcome. */
-export const exportedWebScriptSchema = z.strictObject({
-  source: sourceSchema,
-  url: z.string(),
-  content: z.discriminatedUnion("state", [
-    z.strictObject({
-      state: z.literal("exported"),
-      relative_path: z.string().min(1),
-      layout: z.enum(["url-path", "isolated"]),
-      layout_reason: z.string().nullable(),
-      sha256: digestSchema,
-      bytes: z.number().int().min(0),
-      media_type: z.string().nullable(),
-      redacted: z.boolean().nullable(),
-      representation: z.enum([
-        "debugger-source-utf8",
-        "browser-decoded-response-bytes",
-      ]),
-    }),
-    z.strictObject({
-      state: z.literal("unavailable"),
-      reason: z.string().min(1),
-      message: z.string().min(1),
-    }),
-  ]),
+const pageScriptSourceSchema = z.strictObject({
+  kind: z.literal("page-script"),
+  script_key: z.string().min(1),
+  frame_id: z.string().nullable(),
+  is_module: z.boolean(),
+  language: z.string().nullable(),
+  source_map_url: z.string().nullable(),
 });
-export type ExportedWebScript = z.output<typeof exportedWebScriptSchema>;
+
+const scenarioResponseSourceSchema = z.strictObject({
+  kind: z.literal("scenario-response"),
+  transaction_id: z.string().nullable(),
+  request_sequence: z.number().int().min(1),
+  response_sequence: z.number().int().min(1).nullable(),
+  status: z.number().nullable(),
+});
+
+/** Source identity of a script retrieved over HTTP, or read from markup, by fetch_web_scripts. */
+export const httpFetchSourceSchema = z.strictObject({
+  kind: z.literal("http-fetch"),
+  discovered_by: z.enum([
+    "entry-page",
+    "script-src",
+    "modulepreload",
+    "preload",
+    "inline-script",
+    "static_import",
+    "dynamic_import",
+    "require",
+  ]),
+  referrer_url: z.string().nullable(),
+  inline_index: z.number().int().min(0).nullable(),
+  fetched_url: z.string().nullable(),
+  status: z.number().int().nullable(),
+  content_type: z.string().nullable(),
+  is_module: z.boolean().nullable(),
+});
+
+/** Byte representations retained from browser captures. */
+export const CAPTURED_SCRIPT_REPRESENTATIONS = [
+  "debugger-source-utf8",
+  "browser-decoded-response-bytes",
+] as const;
+
+/** Byte representations retained by browserless HTTP fetches. */
+export const FETCHED_SCRIPT_REPRESENTATIONS = [
+  "http-response-bytes",
+  "inline-markup-utf8",
+] as const;
+
+const unavailableContentSchema = z.strictObject({
+  state: z.literal("unavailable"),
+  reason: z.string().min(1),
+  message: z.string().min(1),
+});
+
+/**
+ * Build one tool's exported-script record schema from its own source and
+ * representation vocabulary, so each tool advertises only variants it can
+ * produce while sharing the publication layout.
+ */
+export const exportedWebScriptRecordSchema = <
+  Source extends z.ZodType,
+  const Representation extends readonly [string, ...string[]],
+>(
+  source: Source,
+  representations: Representation,
+) =>
+  z.strictObject({
+    source,
+    url: z.string(),
+    content: z.discriminatedUnion("state", [
+      z.strictObject({
+        state: z.literal("exported"),
+        relative_path: z.string().min(1),
+        layout: z.enum(["url-path", "isolated"]),
+        layout_reason: z.string().nullable(),
+        sha256: digestSchema,
+        bytes: z.number().int().min(0),
+        media_type: z.string().nullable(),
+        redacted: z.boolean().nullable(),
+        representation: z.enum(representations),
+      }),
+      unavailableContentSchema,
+    ]),
+  });
+
+/** Exact retained-source identity and publication outcome for captured scripts. */
+export const exportedWebScriptSchema = exportedWebScriptRecordSchema(
+  z.discriminatedUnion("kind", [
+    pageScriptSourceSchema,
+    scenarioResponseSourceSchema,
+  ]),
+  CAPTURED_SCRIPT_REPRESENTATIONS,
+);
+
+const anyExportedWebScriptSchema = exportedWebScriptRecordSchema(
+  z.discriminatedUnion("kind", [
+    pageScriptSourceSchema,
+    scenarioResponseSourceSchema,
+    httpFetchSourceSchema,
+  ]),
+  [...CAPTURED_SCRIPT_REPRESENTATIONS, ...FETCHED_SCRIPT_REPRESENTATIONS],
+);
+/** Any adapter's exported record; each public tool publishes only its own variants. */
+export type ExportedWebScript = z.output<typeof anyExportedWebScriptSchema>;
 
 /** Persisted manifest, also returned inline without duplicating script bytes. */
 export const webScriptExportManifestSchema = z.strictObject({
@@ -116,8 +177,8 @@ export interface CapturedWebScript {
         readonly media_type: string | null;
         readonly redacted: boolean | null;
         readonly representation:
-          | "debugger-source-utf8"
-          | "browser-decoded-response-bytes";
+          | (typeof CAPTURED_SCRIPT_REPRESENTATIONS)[number]
+          | (typeof FETCHED_SCRIPT_REPRESENTATIONS)[number];
       }
     | Extract<ExportedWebScript["content"], { state: "unavailable" }>;
 }

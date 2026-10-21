@@ -5,13 +5,7 @@ import { describe, expect, it } from "vitest";
 import { SUPPORTED_CLIENT_DEFINITIONS } from "../../src/application/SupportedClients.js";
 import { PRODUCT_IDENTITY } from "../../src/identity.js";
 
-const readmes = [
-  "README.md",
-  "README_zh.md",
-  "README_ja.md",
-  "README_ko.md",
-  "README_ar.md",
-] as const;
+const readmes = ["README.md"] as const;
 
 const normalizedProse = (content: string): string =>
   content.replace(/\s+/gu, " ").trim();

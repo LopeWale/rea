@@ -3,8 +3,8 @@ name: reverse-engineer-anything
 description: Reverse engineer native, managed, Electron/JavaScript, packaged, firmware, and browser targets with REA. Use shipped-artifact or requested runtime evidence to explain features, compare versions, decompile code, or guide a reconstruction. Skip REA for ordinary source-repository architecture analysis.
 metadata:
   version: "26"
-  tool_count: 126
-  catalog_digest: "e21455dd7d64af94e0b07aff55ab82f03a37e46729ece51be38b50083d2d5b55"
+  tool_count: 128
+  catalog_digest: "3b40350f773ff9fab40a5f23d5c85f4e3f0de943f0c4b19db1d4a6cf1fd8bfd0"
 ---
 
 # REA
@@ -92,6 +92,14 @@ explicit path or endpoint and do not need it.
 - .NET NativeAOT PE/ELF: native Ghidra analysis. Native code can yield pseudocode;
   consult the NativeAOT workflow in `references/native-and-artifacts.md` for
   optional metadata recovery and its supported host/layout boundary.
+- Public page URL, or a web.archive.org snapshot of one, with no session to
+  drive: `fetch_web_scripts` with an absent absolute `output_directory`, then
+  `analyze_javascript_application` on its `analysis_input`. Fetched bytes show
+  what the server sent without cookies; they do not establish execution.
+- A service's OpenAPI 3.x document on disk (published docs, an SDK's bundled
+  spec, or an archived copy): `inspect_api_contract`. Report its `operations`
+  and `schemas` as declared facts and its `inferences` as heuristics; the
+  document never establishes server behavior.
 - User-owned browser page already open: `list_browser_targets`.
 - User-owned Electron runtime already open: `list_electron_targets`.
 - Native executable, library, or analysis database: `open_binary`, then

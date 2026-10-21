@@ -79,6 +79,8 @@ const PUBLISHED_TOOL_NAME_FLOOR = [
   "export_evidence_bundle",
   "extract_artifact",
   "export_web_scripts",
+  "fetch_web_scripts",
+  "inspect_api_contract",
   "find_changed_behavior",
   "find_xrefs_to_name",
   "get_call_graph",
